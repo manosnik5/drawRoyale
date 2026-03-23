@@ -32,12 +32,11 @@ const AddFriendsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900 text-slate-100">
+    <div className="min-h-screen bg-linear-to-b from-slate-950 via-indigo-950 to-slate-900 text-slate-100">
       <Navbar />
 
       <main className="max-w-xl mx-auto px-4 py-12">
 
-        {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
             <UserPlus className="w-5 h-5 text-indigo-400" />
@@ -48,7 +47,6 @@ const AddFriendsPage = () => {
           </div>
         </div>
 
-        {/* Search input */}
         <div className="relative mb-6">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
@@ -61,8 +59,6 @@ const AddFriendsPage = () => {
             <Loader className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 animate-spin" />
           )}
         </div>
-
-        {/* Results */}
         <div className="space-y-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
@@ -78,7 +74,7 @@ const AddFriendsPage = () => {
                   className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-900/60 border border-white/10 hover:bg-slate-800/60 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative flex-shrink-0">
+                    <div className="relative shrink-0">
                       {user.imageUrl ? (
                         <img src={user.imageUrl} className="w-10 h-10 rounded-full object-cover" />
                       ) : (
