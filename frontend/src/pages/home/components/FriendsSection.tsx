@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGetFriends, useRemoveFriend, useSendRoomInvite } from '../../../hooks/useFriends'
 import { UserPlus, X, Loader, Users, Search } from 'lucide-react'
 import { useSocketContext } from '../../../contexts/SocketContext'
+import { useAuth } from '@clerk/clerk-react'
 
 
 
@@ -11,19 +12,19 @@ function getInitials(name: string): string {
 }
 
 const FriendsSection = () => {
-  const { isOnline, onlineUsers, isConnected, currentRoomCode, socket, pendingInvites, acceptRoomInvite, rejectRoomInvite } = useSocketContext()
+  const { isOnline, currentRoomCode, socket, pendingInvites, acceptRoomInvite, rejectRoomInvite } = useSocketContext()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const { userId } = useAuth()
 
   const { data: friends = [], isLoading } = useGetFriends()
   const removeFriend = useRemoveFriend()
   const sendRoomInvite = useSendRoomInvite({
     onSuccess: (_data: any, variables: { friendId: string; roomCode: string }) => {
-      // Emit socket event to notify the friend
       socket?.emit('room:invite', {
         friendId: variables.friendId,
         roomCode: variables.roomCode,
-        senderName: 'You' // Could get actual name from user context
+        senderName: 'You' 
       })
     }
   })
@@ -33,14 +34,23 @@ const FriendsSection = () => {
   )
 
   const onlineCount = friends.filter(f => isOnline(f.clerkId)).length
-console.log('isConnected:', isConnected)
-console.log('onlineUsers:', [...onlineUsers])
+
+  if (!userId) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-6 text-center gap-3">
+      <Users className="size-10 text-slate-700" />
+      <p className="text-slate-400 text-sm font-medium">You're not signed in</p>
+      <p className="text-slate-600 text-xs">
+        Connect your account to add friends and see who's online.
+      </p>
+    </div>
+  )
+}
+
   return (
     <div className="flex flex-col h-full">
-
-      {/* Pending Invites */}
       {pendingInvites.length > 0 && (
-        <div className="px-5 pt-5 pb-3 border-b border-white/10 flex-shrink-0">
+        <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
           <h3 className="text-sm font-semibold text-white mb-3">Room Invites</h3>
           <div className="space-y-2">
             {pendingInvites.map((invite) => (
@@ -73,8 +83,7 @@ console.log('onlineUsers:', [...onlineUsers])
         </div>
       )}
 
-      {/* Header */}
-      <div className="px-5 pt-5 pb-3 border-b border-white/10 flex-shrink-0">
+      <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-white">Friends</h2>
           <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
@@ -82,7 +91,6 @@ console.log('onlineUsers:', [...onlineUsers])
           </span>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => navigate('/friends/add')}
