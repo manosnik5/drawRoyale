@@ -65,4 +65,3 @@ export interface FriendRequest {
     createdAt: string
     sender: Pick<Player, 'id' | 'fullName' | 'imageUrl'>
 }
-
