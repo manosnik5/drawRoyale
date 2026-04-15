@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useSocketContext } from '../../../contexts/SocketContext'
 import { getStroke } from 'perfect-freehand'
-import { Eraser, Trash2, Send, Pencil } from 'lucide-react'
+import { Eraser, Trash2, Send, Pencil, PaintBucket } from 'lucide-react'
 import type { ConnectedPlayer } from '../RoomPage'
 
 interface Props {
@@ -19,17 +19,35 @@ interface Stroke {
   tool: 'pen' | 'eraser'
 }
 
+interface FillAction {
+  type: 'fill'
+  x: number
+  y: number
+  color: string
+}
+
+type DrawAction = Stroke | FillAction
+
 const COLORS = [
-  '#ffffff', '#f87171', '#fb923c', '#facc15',
-  '#4ade80', '#60a5fa', '#a78bfa', '#f472b6',
-  '#94a3b8', '#1e293b',
+  '#ffffff', '#e2e8f0', '#94a3b8', '#475569', '#1e293b', '#000000',
+  '#fecaca', '#f87171', '#ef4444', '#dc2626', '#991b1b',
+  '#fed7aa', '#fb923c', '#f97316', '#ea580c', '#9a3412',
+  '#fef08a', '#facc15', '#eab308', '#ca8a04', '#854d0e',
+  '#bbf7d0', '#4ade80', '#22c55e', '#16a34a', '#166534',
+  '#99f6e4', '#2dd4bf', '#14b8a6', '#0d9488', '#115e59',
+  '#bfdbfe', '#60a5fa', '#3b82f6', '#2563eb', '#1e40af',
+  '#c7d2fe', '#818cf8', '#6366f1', '#4f46e5', '#3730a3',
+  '#e9d5ff', '#c084fc', '#a855f7', '#9333ea', '#6b21a8',
+  '#fbcfe8', '#f472b6', '#ec4899', '#db2777', '#9d174d',
+  '#fde68a', '#d97706', '#b45309', '#92400e', '#78350f',
 ]
 
 const BRUSH_SIZES = [
-  { label: 'S', value: 3 },
-  { label: 'M', value: 6 },
-  { label: 'L', value: 12 },
-  { label: 'XL', value: 20 },
+  { label: 'XS', value: 2 },
+  { label: 'S', value: 4 },
+  { label: 'M', value: 8 },
+  { label: 'L', value: 16 },
+  { label: 'XL', value: 28 },
 ]
 
 function getSvgPath(stroke: number[][]): string {
@@ -44,21 +62,101 @@ function getSvgPath(stroke: number[][]): string {
 
 const CANVAS_BG = '#0f172a'
 
+function hexToRgb(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return [r, g, b]
+}
+
+
+function colorsMatch(
+  data: Uint8ClampedArray,
+  idx: number,
+  r: number, g: number, b: number,
+  tolerance = 30
+): boolean {
+  return (
+    Math.abs(data[idx] - r) <= tolerance &&
+    Math.abs(data[idx + 1] - g) <= tolerance &&
+    Math.abs(data[idx + 2] - b) <= tolerance
+  )
+}
+
+function floodFill(
+  ctx: CanvasRenderingContext2D,
+  startX: number,
+  startY: number,
+  fillColor: string
+) {
+  const canvas = ctx.canvas
+  const width = canvas.width
+  const height = canvas.height
+  const imageData = ctx.getImageData(0, 0, width, height)
+  const data = imageData.data
+
+  const startIdx = (startY * width + startX) * 4
+  const startR = data[startIdx]
+  const startG = data[startIdx + 1]
+  const startB = data[startIdx + 2]
+
+  const [fillR, fillG, fillB] = hexToRgb(fillColor)
+
+  // already this color
+  if (
+    Math.abs(startR - fillR) < 5 &&
+    Math.abs(startG - fillG) < 5 &&
+    Math.abs(startB - fillB) < 5
+  ) return
+
+  const stack: number[] = [startX + startY * width]
+  const visited = new Uint8Array(width * height)
+
+  while (stack.length > 0) {
+    const pos = stack.pop()!
+    const x = pos % width
+    const y = Math.floor(pos / width)
+
+    if (x < 0 || x >= width || y < 0 || y >= height) continue
+    if (visited[pos]) continue
+
+    const idx = pos * 4
+    if (!colorsMatch(data, idx, startR, startG, startB)) continue
+
+    visited[pos] = 1
+    data[idx] = fillR
+    data[idx + 1] = fillG
+    data[idx + 2] = fillB
+    data[idx + 3] = 255
+
+    stack.push(pos + 1)       // right
+    stack.push(pos - 1)       // left
+    stack.push(pos + width)   // down
+    stack.push(pos - width)   // up
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+}
+
+
+
 const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: Props) => {
   const { submitDrawing, broadcastStroke } = useSocketContext()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const currentPoints = useRef<[number, number, number][]>([])
-  const strokes = useRef<Stroke[]>([])
-  const submittedRef = useRef(false)  
-  const timerStartedRef = useRef(false) 
+  const actions = useRef<DrawAction[]>([])
+  const submittedRef = useRef(false)
+  const timerStartedRef = useRef(false)
 
-  const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
+  const [tool, setTool] = useState<'pen' | 'eraser' | 'fill'>('pen')
   const [color, setColor] = useState('#ffffff')
-  const [size, setSize] = useState(6)
-  const [showSubmitted, setShowSubmitted] = useState(false) 
+  const [size, setSize] = useState(8)
+  const [showSubmitted, setShowSubmitted] = useState(false)
 
   const timeWarning = timeLeft <= 30 && timeLeft > 0
+
+  
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -68,12 +166,6 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
     ctx.fillStyle = CANVAS_BG
     ctx.fillRect(0, 0, canvas.width, canvas.height)
   }, [])
-
-
-  useEffect(() => {
-    timerStartedRef.current = false
-  }, [])
-
 
   useEffect(() => {
     if (timeLeft > 0 && !timerStartedRef.current) {
@@ -92,18 +184,25 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
     ctx.fillStyle = CANVAS_BG
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    for (const stroke of strokes.current) {
-      const outline = getStroke(stroke.points, {
-        size: stroke.size,
-        thinning: 0.5,
-        smoothing: 0.5,
-        simulatePressure: true,
-      })
-      const path = new Path2D(getSvgPath(outline))
-      ctx.fillStyle = stroke.tool === 'eraser' ? CANVAS_BG : stroke.color
-      ctx.fill(path)
+
+    for (const action of actions.current) {
+      if ('type' in action && action.type === 'fill') {
+        floodFill(ctx, action.x, action.y, action.color)
+      } else {
+        const stroke = action as Stroke
+        const outline = getStroke(stroke.points, {
+          size: stroke.size,
+          thinning: 0.5,
+          smoothing: 0.5,
+          simulatePressure: true,
+        })
+        const path = new Path2D(getSvgPath(outline))
+        ctx.fillStyle = stroke.tool === 'eraser' ? CANVAS_BG : stroke.color
+        ctx.fill(path)
+      }
     }
   }, [])
 
@@ -120,13 +219,31 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (submittedRef.current) return
+
+    if (tool === 'fill') {
+      const rect = canvasRef.current!.getBoundingClientRect()
+      const scaleX = canvasRef.current!.width / rect.width
+      const scaleY = canvasRef.current!.height / rect.height
+      const x = Math.floor((e.clientX - rect.left) * scaleX)
+      const y = Math.floor((e.clientY - rect.top) * scaleY)
+
+      const canvas = canvasRef.current!
+      const ctx = canvas.getContext('2d')!
+      floodFill(ctx, x, y, color)
+
+      const fillAction: FillAction = { type: 'fill', x, y, color }
+      actions.current = [...actions.current, fillAction]
+      broadcastStroke(roomCode, fillAction as any)
+      return
+    }
+
     isDrawing.current = true
     currentPoints.current = [getPoint(e)]
     canvasRef.current?.setPointerCapture(e.pointerId)
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current || submittedRef.current) return
+    if (!isDrawing.current || submittedRef.current || tool === 'fill') return
     currentPoints.current = [...currentPoints.current, getPoint(e)]
     const canvas = canvasRef.current
     if (!canvas) return
@@ -146,7 +263,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
   }
 
   const onPointerUp = useCallback(() => {
-    if (!isDrawing.current) return
+    if (!isDrawing.current || tool === 'fill') return
     isDrawing.current = false
     const newStroke: Stroke = {
       points: [...currentPoints.current],
@@ -154,28 +271,29 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
       size,
       tool,
     }
-    strokes.current = [...strokes.current, newStroke]
+    actions.current = [...actions.current, newStroke]
     broadcastStroke(roomCode, newStroke)
     currentPoints.current = []
     redraw()
   }, [color, size, tool, roomCode, broadcastStroke, redraw])
 
   const handleSubmit = useCallback(() => {
-    if (submittedRef.current) return  
-    submittedRef.current = true       
+    if (submittedRef.current) return
+    submittedRef.current = true
     setShowSubmitted(true)
     const currentPlayer = connectedPlayers.find(p => p.userId === userId)
     const playerName = currentPlayer?.playerName || userId
-    submitDrawing(roomCode, playerName, strokes.current)
+    // send strokes only (fill actions serialized as-is)
+    submitDrawing(roomCode, playerName, actions.current as any)
   }, [roomCode, userId, connectedPlayers, submitDrawing])
 
   const handleClear = () => {
-    strokes.current = []
+    actions.current = []
     redraw()
   }
 
   const handleUndo = () => {
-    strokes.current = strokes.current.slice(0, -1)
+    actions.current = actions.current.slice(0, -1)
     redraw()
   }
 
@@ -207,7 +325,11 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
           ref={canvasRef}
           width={800}
           height={480}
-          className={`w-full touch-none block ${showSubmitted ? 'cursor-default' : 'cursor-crosshair'}`}
+          className={`w-full touch-none block ${
+            submittedRef.current ? 'cursor-default' :
+            tool === 'fill' ? 'cursor-cell' :
+            'cursor-crosshair'
+          }`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -215,81 +337,106 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
       </div>
 
       {!showSubmitted ? (
-        <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-white/10">
-          <div className="flex gap-1 p-1 bg-slate-800/60 rounded-lg">
-            <button
-              onClick={() => setTool('pen')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                tool === 'pen' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Pencil className="w-3.5 h-3.5" /> Pen
-            </button>
-            <button
-              onClick={() => setTool('eraser')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                tool === 'eraser' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Eraser className="w-3.5 h-3.5" /> Eraser
-            </button>
+        <div className="flex flex-col gap-3 p-3 rounded-xl bg-slate-900/60 border border-white/10">
+
+          {/* Tools + sizes + actions */}
+          <div className="flex flex-wrap items-center gap-3">
+
+            <div className="flex gap-1 p-1 bg-slate-800/60 rounded-lg">
+              <button
+                onClick={() => setTool('pen')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                  tool === 'pen' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Pencil className="w-3.5 h-3.5" /> Pen
+              </button>
+              <button
+                onClick={() => setTool('eraser')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                  tool === 'eraser' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Eraser className="w-3.5 h-3.5" /> Eraser
+              </button>
+              <button
+                onClick={() => setTool('fill')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                  tool === 'fill' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <PaintBucket className="w-3.5 h-3.5" /> Fill
+              </button>
+            </div>
+
+            <div className="w-px h-6 bg-white/10" />
+
+            {/* Brush sizes — hidden when fill is active */}
+            {tool !== 'fill' && (
+              <div className="flex gap-1">
+                {BRUSH_SIZES.map(({ label, value }) => (
+                  <button
+                    key={value}
+                    onClick={() => setSize(value)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${
+                      size === value ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {tool === 'fill' && (
+              <p className="text-xs text-amber-400/70">Click any area to fill it</p>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={handleUndo}
+                disabled={actions.current.length === 0}
+                className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                ↩ Undo
+              </button>
+              <button
+                onClick={handleClear}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-md shadow-indigo-900/50 active:scale-95"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Submit
+              </button>
+            </div>
           </div>
 
-          <div className="w-px h-6 bg-white/10" />
+          <div className="h-px bg-white/10" />
 
-          <div className="flex gap-1.5 flex-wrap">
+          {/* Color palette */}
+          <div className="flex flex-wrap gap-1.5">
             {COLORS.map(c => (
               <button
                 key={c}
-                onClick={() => { setColor(c); setTool('pen') }}
-                className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-95"
+                onClick={() => {
+                  setColor(c)
+                  if (tool === 'eraser') setTool('pen')
+                }}
+                title={c}
+                className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-95 flex-shrink-0"
                 style={{
                   backgroundColor: c,
-                  borderColor: color === c && tool === 'pen' ? '#6366f1' : 'rgba(255,255,255,0.15)',
-                  boxShadow: color === c && tool === 'pen' ? '0 0 0 2px #6366f1' : 'none',
+                  borderColor: color === c && tool !== 'eraser' ? '#6366f1' : 'rgba(255,255,255,0.12)',
+                  boxShadow: color === c && tool !== 'eraser' ? '0 0 0 2px #6366f1' : 'none',
                 }}
               />
             ))}
-          </div>
-
-          <div className="w-px h-6 bg-white/10" />
-
-          <div className="flex gap-1">
-            {BRUSH_SIZES.map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setSize(value)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${
-                  size === value ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={handleUndo}
-              disabled={strokes.current.length === 0}
-              className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              ↩ Undo
-            </button>
-            <button
-              onClick={handleClear}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-md shadow-indigo-900/50 active:scale-95"
-            >
-              <Send className="w-3.5 h-3.5" />
-              Submit
-            </button>
           </div>
         </div>
       ) : (
