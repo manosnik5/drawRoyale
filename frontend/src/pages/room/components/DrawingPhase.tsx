@@ -102,7 +102,6 @@ function floodFill(
 
   const [fillR, fillG, fillB] = hexToRgb(fillColor)
 
-  // already this color
   if (
     Math.abs(startR - fillR) < 5 &&
     Math.abs(startG - fillG) < 5 &&
@@ -129,10 +128,10 @@ function floodFill(
     data[idx + 2] = fillB
     data[idx + 3] = 255
 
-    stack.push(pos + 1)       // right
-    stack.push(pos - 1)       // left
-    stack.push(pos + width)   // down
-    stack.push(pos - width)   // up
+    stack.push(pos + 1)      
+    stack.push(pos - 1)       
+    stack.push(pos + width)   
+    stack.push(pos - width)   
   }
 
   ctx.putImageData(imageData, 0, 0)
@@ -283,7 +282,6 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
     setShowSubmitted(true)
     const currentPlayer = connectedPlayers.find(p => p.userId === userId)
     const playerName = currentPlayer?.playerName || userId
-    // send strokes only (fill actions serialized as-is)
     submitDrawing(roomCode, playerName, actions.current as any)
   }, [roomCode, userId, connectedPlayers, submitDrawing])
 
@@ -338,8 +336,6 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
 
       {!showSubmitted ? (
         <div className="flex flex-col gap-3 p-3 rounded-xl bg-slate-900/60 border border-white/10">
-
-          {/* Tools + sizes + actions */}
           <div className="flex flex-wrap items-center gap-3">
 
             <div className="flex gap-1 p-1 bg-slate-800/60 rounded-lg">
@@ -370,8 +366,6 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
             </div>
 
             <div className="w-px h-6 bg-white/10" />
-
-            {/* Brush sizes — hidden when fill is active */}
             {tool !== 'fill' && (
               <div className="flex gap-1">
                 {BRUSH_SIZES.map(({ label, value }) => (
@@ -418,8 +412,6 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
           </div>
 
           <div className="h-px bg-white/10" />
-
-          {/* Color palette */}
           <div className="flex flex-wrap gap-1.5">
             {COLORS.map(c => (
               <button
@@ -429,7 +421,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
                   if (tool === 'eraser') setTool('pen')
                 }}
                 title={c}
-                className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-95 flex-shrink-0"
+                className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110 active:scale-95 shrink-0"
                 style={{
                   backgroundColor: c,
                   borderColor: color === c && tool !== 'eraser' ? '#6366f1' : 'rgba(255,255,255,0.12)',
