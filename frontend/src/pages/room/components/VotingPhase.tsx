@@ -40,12 +40,12 @@ function renderStrokes(canvas: HTMLCanvasElement, strokes: any[]) {
 }
 
 const REACTIONS = [
-  { key: 'trash', emoji: '🗑️', label: 'Trash',   color: 'hover:border-red-500/50 hover:bg-red-500/10' },
-  { key: 'fire',  emoji: '🔥', label: 'Fire',    color: 'hover:border-orange-500/50 hover:bg-orange-500/10' },
-  { key: 'love',  emoji: '❤️',  label: 'Love',    color: 'hover:border-pink-500/50 hover:bg-pink-500/10' },
-  { key: 'wow',   emoji: '😮', label: 'Wow',     color: 'hover:border-yellow-500/50 hover:bg-yellow-500/10' },
-  { key: 'laugh', emoji: '😂', label: 'Lol',     color: 'hover:border-indigo-500/50 hover:bg-indigo-500/10' },
-]
+  { key: 'What is this?',  emoji: '💀', label: 'What is this?',  color: 'hover:border-red-500/50 hover:bg-red-500/10' },
+  { key: 'Meh',            emoji: '😐', label: 'Meh',            color: 'hover:border-gray-500/50 hover:bg-gray-500/10' },
+  { key: 'Nice',           emoji: '👍', label: 'Nice',           color: 'hover:border-yellow-500/50 hover:bg-yellow-500/10' },
+  { key: 'Awesome',        emoji: '😄', label: 'Awesome',        color: 'hover:border-pink-500/50 hover:bg-pink-500/10' },
+  { key: 'Legendary',      emoji: '🔥', label: 'Legendary',      color: 'hover:border-orange-500/50 hover:bg-orange-500/10' },
+];
 
 const VotingPhase = ({ roomCode, connectedPlayers, userId }: Props) => {
   const { roomState, castVote } = useSocketContext()
