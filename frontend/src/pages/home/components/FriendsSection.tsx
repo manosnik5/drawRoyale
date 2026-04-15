@@ -145,7 +145,7 @@ const FriendsSection = () => {
                 className="flex items-center justify-between px-2 py-2 rounded-xl hover:bg-slate-800/60 transition-colors group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative flex-shrink-0">
+                  <div className="relative shrink-0">
                     {friend.imageUrl ? (
                       <img src={friend.imageUrl} className="w-8 h-8 rounded-full object-cover" />
                     ) : (
@@ -165,7 +165,7 @@ const FriendsSection = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                   {currentRoomCode && (
                     <button 
                       onClick={() => sendRoomInvite.mutate({ friendId: friend.id, roomCode: currentRoomCode })}
