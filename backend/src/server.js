@@ -6,13 +6,12 @@ import cors from 'cors'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { clerkMiddleware } from '@clerk/express'
-import { registerPresenceHandlers,  } from './socket/onlineSocket.js'
+import { registerPresenceHandlers } from './socket/onlineSocket.js'
 import { registerRoomHandlers } from './socket/roomSocket.js'
 
 import authRoutes from './routes/auth.route.js'
 import roomRoutes from './routes/room.route.js'
 import friendRoutes from './routes/friend.route.js'
-import adminRoutes from './routes/admin.route.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -38,7 +37,6 @@ app.use(clerkMiddleware())
 app.use('/api/auth', authRoutes)
 app.use('/api/rooms', roomRoutes)
 app.use('/api/friends', friendRoutes)
-app.use('/api/admin', adminRoutes)
 
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err?.message || err)
