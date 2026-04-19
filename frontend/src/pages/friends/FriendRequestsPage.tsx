@@ -1,14 +1,28 @@
-import { useGetPendingRequests, useAcceptFriendRequest, useRejectFriendRequest } from "../../hooks/useFriends"
+import {
+  useGetPendingRequests,
+  useAcceptFriendRequest,
+  useRejectFriendRequest
+} from "../../hooks/useFriends"
+
 import { UserPlus, Check, X, Loader, Clock } from "lucide-react"
 import Navbar from "../home/components/Navbar"
 
 const AVATAR_COLORS = [
-  'bg-indigo-500', 'bg-violet-500', 'bg-pink-500',
-  'bg-emerald-500', 'bg-amber-500', 'bg-cyan-500',
+  "bg-indigo-500",
+  "bg-violet-500",
+  "bg-pink-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-cyan-500",
 ]
 
 function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 const FriendRequestsPage = () => {
@@ -16,21 +30,30 @@ const FriendRequestsPage = () => {
   const acceptRequest = useAcceptFriendRequest()
   const rejectRequest = useRejectFriendRequest()
 
+  // ✅ IMPORTANT FIX: only show pending requests
+  const pendingRequests = (requests ?? []).filter(
+    (r) => r.status === "pending"
+  )
+
+  console.log("requests raw:", requests)
+  console.log("pending only:", pendingRequests)
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900 text-slate-100">
       <Navbar />
 
       <main className="max-w-xl mx-auto px-4 py-12">
-
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
             <Clock className="w-5 h-5 text-indigo-400" />
           </div>
+
           <div>
             <h1 className="text-xl font-bold text-white">Friend Requests</h1>
             <p className="text-xs text-slate-500">
-              {requests?.length ?? 0} pending {requests?.length === 1 ? 'request' : 'requests'}
+              {pendingRequests.length} pending{" "}
+              {pendingRequests.length === 1 ? "request" : "requests"}
             </p>
           </div>
         </div>
@@ -40,26 +63,33 @@ const FriendRequestsPage = () => {
           <div className="flex items-center justify-center py-16">
             <Loader className="w-6 h-6 text-indigo-400 animate-spin" />
           </div>
-
-        ) : requests && requests.length > 0 ? (
+        ) : pendingRequests.length > 0 ? (
           <div className="space-y-2">
-            {requests.map((request, i) => (
+            {pendingRequests.map((request, i) => (
               <div
                 key={request.id}
                 className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-slate-900/60 border border-white/10 hover:bg-slate-800/60 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0">
-                    {request.sender.imageUrl ? (
-                      <img src={request.sender.imageUrl} className="w-10 h-10 rounded-full object-cover" />
-                    ) : (
-                      <div className={`w-10 h-10 rounded-full ${AVATAR_COLORS[i % AVATAR_COLORS.length]} flex items-center justify-center text-sm font-bold text-white`}>
-                        {getInitials(request.sender.fullName)}
-                      </div>
-                    )}
-                  </div>
+                  {request.sender.imageUrl ? (
+                    <img
+                      src={request.sender.imageUrl}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className={`w-10 h-10 rounded-full ${
+                        AVATAR_COLORS[i % AVATAR_COLORS.length]
+                      } flex items-center justify-center text-sm font-bold text-white`}
+                    >
+                      {getInitials(request.sender.fullName)}
+                    </div>
+                  )}
+
                   <div>
-                    <p className="text-sm font-medium text-white">{request.sender.fullName}</p>
+                    <p className="text-sm font-medium text-white">
+                      {request.sender.fullName}
+                    </p>
                     <p className="text-xs text-slate-500">
                       {new Date(request.createdAt).toLocaleDateString()}
                     </p>
@@ -75,6 +105,7 @@ const FriendRequestsPage = () => {
                     <Check className="w-3.5 h-3.5" />
                     Accept
                   </button>
+
                   <button
                     onClick={() => rejectRequest.mutate(request.id)}
                     disabled={rejectRequest.isPending}
@@ -87,15 +118,15 @@ const FriendRequestsPage = () => {
               </div>
             ))}
           </div>
-
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <UserPlus className="w-10 h-10 text-slate-700 mb-3" />
-            <p className="text-slate-400 text-sm font-medium">No pending requests</p>
+            <p className="text-slate-400 text-sm font-medium">
+              No pending requests
+            </p>
             <p className="text-slate-600 text-xs mt-1">You're all caught up!</p>
           </div>
         )}
-
       </main>
     </div>
   )

@@ -3,6 +3,7 @@ import { useSocketContext } from '../../../contexts/SocketContext'
 import { getStroke } from 'perfect-freehand'
 import { Eraser, Trash2, Send, Pencil, PaintBucket } from 'lucide-react'
 import type { ConnectedPlayer } from '../RoomPage'
+import { getSvgPath, floodFill, CANVAS_BG } from '../../../utils/canvasUtils'
 
 interface Props {
   roomCode: string
@@ -44,100 +45,11 @@ const COLORS = [
 
 const BRUSH_SIZES = [
   { label: 'XS', value: 2 },
-  { label: 'S', value: 4 },
-  { label: 'M', value: 8 },
-  { label: 'L', value: 16 },
+  { label: 'S',  value: 4 },
+  { label: 'M',  value: 8 },
+  { label: 'L',  value: 16 },
   { label: 'XL', value: 28 },
 ]
-
-function getSvgPath(stroke: number[][]): string {
-  if (!stroke.length) return ''
-  const d = stroke.reduce((acc: (string | number)[], [x0, y0], i, arr) => {
-    const [x1, y1] = arr[(i + 1) % arr.length]
-    acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2)
-    return acc
-  }, ['M', ...stroke[0], 'Q'])
-  return d.join(' ')
-}
-
-const CANVAS_BG = '#0f172a'
-
-function hexToRgb(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return [r, g, b]
-}
-
-
-function colorsMatch(
-  data: Uint8ClampedArray,
-  idx: number,
-  r: number, g: number, b: number,
-  tolerance = 30
-): boolean {
-  return (
-    Math.abs(data[idx] - r) <= tolerance &&
-    Math.abs(data[idx + 1] - g) <= tolerance &&
-    Math.abs(data[idx + 2] - b) <= tolerance
-  )
-}
-
-function floodFill(
-  ctx: CanvasRenderingContext2D,
-  startX: number,
-  startY: number,
-  fillColor: string
-) {
-  const canvas = ctx.canvas
-  const width = canvas.width
-  const height = canvas.height
-  const imageData = ctx.getImageData(0, 0, width, height)
-  const data = imageData.data
-
-  const startIdx = (startY * width + startX) * 4
-  const startR = data[startIdx]
-  const startG = data[startIdx + 1]
-  const startB = data[startIdx + 2]
-
-  const [fillR, fillG, fillB] = hexToRgb(fillColor)
-
-  if (
-    Math.abs(startR - fillR) < 5 &&
-    Math.abs(startG - fillG) < 5 &&
-    Math.abs(startB - fillB) < 5
-  ) return
-
-  const stack: number[] = [startX + startY * width]
-  const visited = new Uint8Array(width * height)
-
-  while (stack.length > 0) {
-    const pos = stack.pop()!
-    const x = pos % width
-    const y = Math.floor(pos / width)
-
-    if (x < 0 || x >= width || y < 0 || y >= height) continue
-    if (visited[pos]) continue
-
-    const idx = pos * 4
-    if (!colorsMatch(data, idx, startR, startG, startB)) continue
-
-    visited[pos] = 1
-    data[idx] = fillR
-    data[idx + 1] = fillG
-    data[idx + 2] = fillB
-    data[idx + 3] = 255
-
-    stack.push(pos + 1)      
-    stack.push(pos - 1)       
-    stack.push(pos + width)   
-    stack.push(pos - width)   
-  }
-
-  ctx.putImageData(imageData, 0, 0)
-}
-
-
 
 const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: Props) => {
   const { submitDrawing, broadcastStroke } = useSocketContext()
@@ -155,8 +67,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
 
   const timeWarning = timeLeft <= 30 && timeLeft > 0
 
-  
-
+  // Init canvas
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -166,12 +77,14 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
     ctx.fillRect(0, 0, canvas.width, canvas.height)
   }, [])
 
+  // Track timer started
   useEffect(() => {
     if (timeLeft > 0 && !timerStartedRef.current) {
       timerStartedRef.current = true
     }
   }, [timeLeft])
 
+  // Auto-submit when timer hits 0
   useEffect(() => {
     if (timeLeft === 0 && timerStartedRef.current) {
       handleSubmit()
@@ -212,7 +125,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
     return [
       (e.clientX - rect.left) * scaleX,
       (e.clientY - rect.top) * scaleY,
-      e.pressure || 0.5
+      e.pressure || 0.5,
     ]
   }
 
@@ -226,8 +139,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
       const x = Math.floor((e.clientX - rect.left) * scaleX)
       const y = Math.floor((e.clientY - rect.top) * scaleY)
 
-      const canvas = canvasRef.current!
-      const ctx = canvas.getContext('2d')!
+      const ctx = canvasRef.current!.getContext('2d')!
       floodFill(ctx, x, y, color)
 
       const fillAction: FillAction = { type: 'fill', x, y, color }
@@ -244,11 +156,14 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current || submittedRef.current || tool === 'fill') return
     currentPoints.current = [...currentPoints.current, getPoint(e)]
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
     redraw()
+
     const outline = getStroke(currentPoints.current, {
       size,
       thinning: 0.5,
@@ -264,6 +179,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
   const onPointerUp = useCallback(() => {
     if (!isDrawing.current || tool === 'fill') return
     isDrawing.current = false
+
     const newStroke: Stroke = {
       points: [...currentPoints.current],
       color,
@@ -280,6 +196,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
     if (submittedRef.current) return
     submittedRef.current = true
     setShowSubmitted(true)
+
     const currentPlayer = connectedPlayers.find(p => p.userId === userId)
     const playerName = currentPlayer?.playerName || userId
     submitDrawing(roomCode, playerName, actions.current as any)
@@ -304,6 +221,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
   return (
     <div className="flex flex-col gap-4">
 
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-indigo-300/70 mb-1">Draw this</p>
@@ -318,6 +236,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
         </div>
       </div>
 
+      {/* Canvas */}
       <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
         <canvas
           ref={canvasRef}
@@ -325,7 +244,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
           height={480}
           className={`w-full touch-none block ${
             submittedRef.current ? 'cursor-default' :
-            tool === 'fill' ? 'cursor-cell' :
+            tool === 'fill'      ? 'cursor-cell' :
             'cursor-crosshair'
           }`}
           onPointerDown={onPointerDown}
@@ -334,10 +253,12 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
         />
       </div>
 
+      {/* Toolbar or submitted state */}
       {!showSubmitted ? (
         <div className="flex flex-col gap-3 p-3 rounded-xl bg-slate-900/60 border border-white/10">
           <div className="flex flex-wrap items-center gap-3">
 
+            {/* Tool selector */}
             <div className="flex gap-1 p-1 bg-slate-800/60 rounded-lg">
               <button
                 onClick={() => setTool('pen')}
@@ -366,6 +287,8 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
             </div>
 
             <div className="w-px h-6 bg-white/10" />
+
+            {/* Brush sizes */}
             {tool !== 'fill' && (
               <div className="flex gap-1">
                 {BRUSH_SIZES.map(({ label, value }) => (
@@ -373,7 +296,9 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
                     key={value}
                     onClick={() => setSize(value)}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors ${
-                      size === value ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      size === value
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
                     {label}
@@ -386,6 +311,7 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
               <p className="text-xs text-amber-400/70">Click any area to fill it</p>
             )}
 
+            {/* Actions */}
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={handleUndo}
@@ -398,20 +324,20 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
                 onClick={handleClear}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                Clear
+                <Trash2 className="w-3.5 h-3.5" /> Clear
               </button>
               <button
                 onClick={handleSubmit}
                 className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors shadow-md shadow-indigo-900/50 active:scale-95"
               >
-                <Send className="w-3.5 h-3.5" />
-                Submit
+                <Send className="w-3.5 h-3.5" /> Submit
               </button>
             </div>
           </div>
 
           <div className="h-px bg-white/10" />
+
+          {/* Color palette */}
           <div className="flex flex-wrap gap-1.5">
             {COLORS.map(c => (
               <button

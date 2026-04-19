@@ -1,24 +1,18 @@
-import { useSignIn } from "@clerk/clerk-react"
-
+import { useAuth0 } from "@auth0/auth0-react";
 
 const SignInOAuthButton = () => {
-    const {signIn, isLoaded} = useSignIn();
+    const { loginWithRedirect, isAuthenticated } = useAuth0();
 
-    if (!isLoaded) {
-        return null;
-    }
-
-    const signInWithGoogle = async () => {
-        signIn.authenticateWithRedirect({
-            strategy: "oauth_google",
-            redirectUrl: "/sso-callback",
-            redirectUrlComplete: "/auth-callback"
-        });
-    };
+    if (isAuthenticated) return null;
 
     return (
-        <button  onClick={signInWithGoogle} className="px-2 py-4 bg-black text-white cursor-pointer">Continue with Google</button>
-    )
-}
+        <button
+            onClick={() => loginWithRedirect()}
+            className="px-4 py-3 bg-black text-white"
+        >
+            Continue with Google / Auth0
+        </button>
+    );
+};
 
-export default SignInOAuthButton
+export default SignInOAuthButton;

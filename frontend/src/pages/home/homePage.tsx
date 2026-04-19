@@ -6,12 +6,13 @@ import { pickRandomThemes } from '../../utils/themeSelector'
 import { generateRoomCode } from '../../utils/generateCode'
 import { Clipboard, RefreshCw } from 'lucide-react'
 import FriendsSection from './components/FriendsSection'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth0 } from '@auth0/auth0-react'
 
 
 const HomePage = () => {
   const navigate = useNavigate()
-  const { userId } = useAuth()
+  const { user, isAuthenticated } = useAuth0()
+const userId = user?.sub
   const [tab, setTab] = useState<'create' | 'join'>('create')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
@@ -34,7 +35,7 @@ const HomePage = () => {
   }, [roomCode])
 
   const handleCreateRoom = useCallback(() => {
-   if (!userId) return 
+   if (!isAuthenticated || !userId) return
     createRoom.mutate(
       { code: roomCode },
       {
@@ -54,12 +55,13 @@ const HomePage = () => {
   }, [roomCode, theme, createRoom, navigate, userId])
 
   const handleJoinRoom = () => {
-    if (!userId) return
-    if (!joinCode.trim()) { setJoinError('Enter a room code'); return }
-    if (joinCode.length !== 6) { setJoinError('Room code must be 6 characters'); return }
-    setJoinError('')
-    navigate(`/room/${joinCode.toUpperCase()}`)
-  }
+  if (!isAuthenticated || !userId) return
+  if (!joinCode.trim()) { setJoinError('Enter a room code'); return }
+  if (joinCode.length !== 6) { setJoinError('Room code must be 6 characters'); return }
+
+  setJoinError('')
+  navigate(`/room/${joinCode.toUpperCase()}`)
+}
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-950 via-indigo-950 to-slate-900 text-slate-100">   
@@ -69,7 +71,7 @@ const HomePage = () => {
           <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 overflow-y-auto">
             <div className="text-center mb-12">
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-indigo-400 leading-[1.1] mb-4">
-                Draw<span className="text-white"> Royale</span>
+                Draw<span className="text-white"> Battles</span>
               </h1>
             </div>
 
