@@ -21,6 +21,16 @@ export interface Player {
   joinedAt: string
 }
 
+export interface SearchedPlayer {
+  id: string
+  fullName: string
+  imageUrl?: string
+}
+
+export interface SearchPlayersResponse {
+  users: SearchedPlayer[]
+}
+
 export interface Drawing {
   id: string
   roomId: string
