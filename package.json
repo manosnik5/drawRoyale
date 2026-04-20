@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "npm install --prefix frontend && npm run build --prefix frontend && mvn -f backend/pom.xml clean package",
-    "start": "java -jar backend/target/*.jar"
-  },
+  "build": "npm install --prefix frontend && npm run build --prefix frontend && ./mvnw -f backend/pom.xml clean package",
+  "start": "java -jar backend/target/*.jar"
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/manosnik5/drawRoyale.git"
