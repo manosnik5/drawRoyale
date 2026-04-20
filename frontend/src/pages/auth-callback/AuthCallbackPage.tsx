@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../../lib/axios";
 
 const AuthCallbackPage = () => {
-  const { user, isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
+  const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const synced = useRef(false);
 

@@ -22,7 +22,7 @@ const VotingPhase = ({ roomCode, connectedPlayers, userId }: Props) => {
   const { votingDrawing, votingTimeLeft, votingVotes, votingResult } = roomState
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [voted, setVoted] = useState<string | null>(null)
-  const [loadingTimeout, setLoadingTimeout] = useState(false)
+  const [loadingTimeout] = useState(false)
 
   const current = votingDrawing
   const isOwnDrawing = current?.playerId === userId

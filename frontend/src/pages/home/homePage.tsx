@@ -18,7 +18,7 @@ const userId = user?.sub
   const [joinCode, setJoinCode] = useState('')
   const [joinError, setJoinError] = useState('')
   const [roomCode, setRoomCode] = useState(generateRoomCode)
-  const [theme, setTheme] = useState<string[]>(() => pickRandomThemes(3))
+  const [theme] = useState<string[]>(() => pickRandomThemes(3))
   const [copied, setCopied] = useState(false)
 
   const createRoom = useCreateRoom()
