@@ -150,8 +150,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         let s: Socket
 
         const connectSocket = async () => {
-            const token = await getAccessTokenSilently()
-
+     
             s = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001', {
                 query: {
                     userId,   

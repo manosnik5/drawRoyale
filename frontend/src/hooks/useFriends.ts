@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { friendApi } from '../api/friend'
 import type { Player } from '../types'
-import { useAuth0 } from "@auth0/auth0-react";
 
 export const friendKeys = {
     all: ['friends'] as const,
