@@ -7,25 +7,23 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { getAccessTokenSilently, isAuthenticated, isLoading } = useAuth0();
 
     useEffect(() => {
-        const interceptor = axiosInstance.interceptors.request.use(
-            async (config) => {
-                if (isAuthenticated) {
-                    try {
-                        const token = await getAccessTokenSilently({
-                            authorizationParams: {
-                                audience: import.meta.env.VITE_AUTH0_AUDIENCE,
-                            },
-                        });
+        const interceptor = axiosInstance.interceptors.request.use(async (config) => {
+        if (config.url?.includes('/auth/callback')) {
+            return config  
+        }
 
-                        config.headers.Authorization = `Bearer ${token}`;
-                    } catch (error) {
-                        console.error("Token error:", error);
-                    }
+        if (isAuthenticated) {
+            try {
+                const token = await getAccessTokenSilently()
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`
                 }
-
-                return config;
+            } catch (error) {
+                console.error('Failed to get token:', error)
             }
-        );
+        }
+        return config
+    })
 
         return () => {
             axiosInstance.interceptors.request.eject(interceptor);

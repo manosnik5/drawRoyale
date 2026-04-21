@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../../lib/axios";
 
 const AuthCallbackPage = () => {
-  const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
+  const { user, isAuthenticated } = useAuth0();
   const navigate = useNavigate();
   const synced = useRef(false);
 
@@ -15,23 +15,13 @@ const AuthCallbackPage = () => {
       synced.current = true;
 
       try {
-        const token = await getAccessTokenSilently();
-
-        await axiosInstance.post(
-          "/auth/callback",
-          {
-            id: user.sub,
-            firstName: user.given_name,
-            lastName: user.family_name,
-            imageUrl: user.picture,
-            email: user.email,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        await axiosInstance.post("/auth/callback", {
+          id: user.sub,
+          firstName: user.given_name,
+          lastName: user.family_name,
+          imageUrl: user.picture,
+          email: user.email,
+        });
       } catch (err) {
         console.error("sync failed:", err);
       } finally {
