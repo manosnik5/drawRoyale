@@ -74,6 +74,7 @@ const LobbyPhase = ({ roomCode, room, connectedPlayers, isHost }: Props) => {
                 <div className="shrink-0">
                   {player.imageUrl ? (
                     <img
+                      referrerPolicy="no-referrer"
                       src={player.imageUrl}
                       alt={player.playerName}
                       className="w-8 h-8 rounded-full object-cover"

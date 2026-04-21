@@ -45,7 +45,7 @@ const ResultsPhase = ({ connectedPlayers }: Props) => {
 
   const withImages = results.map(r => {
     let strokes = r.strokes
-    // Handle JSON string
+    
     if (typeof strokes === 'string') {
       try { strokes = JSON.parse(strokes) } catch { strokes = [] }
     }
@@ -70,8 +70,6 @@ const ResultsPhase = ({ connectedPlayers }: Props) => {
 
   return (
     <div className="flex flex-col items-center gap-8">
-
-      {/* Winner banner */}
       {winner && (
         <div className="text-center">
           <div className="text-5xl mb-3">🏆</div>
@@ -88,7 +86,7 @@ const ResultsPhase = ({ connectedPlayers }: Props) => {
         </div>
       )}
 
-      {/* Leaderboard */}
+
       <div className="w-full max-w-2xl space-y-3">
         {rendered.map((result, i) => {
           const style = PLACE_STYLES[i] ?? {
@@ -102,33 +100,32 @@ const ResultsPhase = ({ connectedPlayers }: Props) => {
               key={result.playerId}
               className={`flex items-center gap-4 px-4 py-4 rounded-xl border ${style.border} ${style.bg}`}
             >
-              {/* Place */}
-              <div className="text-2xl flex-shrink-0 w-8 text-center">
+
+              <div className="text-2xl shrink-0 w-8 text-center">
                 {style.icon
                   ? style.icon
                   : <span className={`text-sm font-bold ${style.text}`}>{style.label}</span>
                 }
               </div>
 
-              {/* Drawing thumbnail */}
               {result.dataUrl && (
-                <div className="w-20 h-12 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
+                <div className="w-20 h-12 rounded-lg overflow-hidden border border-white/10 shrink-0">
                   <img src={result.dataUrl} className="w-full h-full object-contain bg-[#0f172a]" />
                 </div>
               )}
 
-              {/* Player info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   {player?.imageUrl ? (
                     <img
+                      referrerPolicy="no-referrer"
                       src={player.imageUrl}
                       alt={result.playerName}
-                      className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                      className="w-6 h-6 rounded-full object-cover shrink-0"
                     />
                   ) : (
                     <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                       style={{ backgroundColor: player?.avatarColor ?? '#6366f1' }}
                     >
                       {result.playerName[0]}
@@ -139,7 +136,6 @@ const ResultsPhase = ({ connectedPlayers }: Props) => {
                   </span>
                 </div>
 
-                {/* Reaction counts */}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {REACTIONS.map(({ key, emoji }) => (
                     result.reactions[key] > 0 && (
@@ -151,7 +147,6 @@ const ResultsPhase = ({ connectedPlayers }: Props) => {
                 </div>
               </div>
 
-              {/* Score */}
               <span className={`font-bold text-sm shrink-0 ${
                 result.score > 0 ? 'text-emerald-400' :
                 result.score < 0 ? 'text-red-400' :

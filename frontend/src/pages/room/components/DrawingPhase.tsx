@@ -67,7 +67,6 @@ const DrawingPhase = ({ roomCode, theme, userId, timeLeft, connectedPlayers }: P
 
   const timeWarning = timeLeft <= 30 && timeLeft > 0
 
-  // Init canvas
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return

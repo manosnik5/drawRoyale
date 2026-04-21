@@ -32,14 +32,13 @@ const VotingPhase = ({ roomCode, connectedPlayers, userId }: Props) => {
   const showResult = !!votingResult && votingResult.drawingId === current?.drawingId
   const timeWarning = votingTimeLeft <= 3
 
-  // Reset vote when drawing changes
   useEffect(() => { setVoted(null) }, [current?.drawingId])
 
-  // In VotingPhase.tsx, inside the strokes useEffect:
-useEffect(() => {
+
+  useEffect(() => {
   if (!canvasRef.current || !current?.strokes) return
 
-  // Handle case where strokes is a JSON string instead of array
+
   let strokes = current.strokes
   if (typeof strokes === 'string') {
     try {
@@ -59,7 +58,7 @@ useEffect(() => {
   }
 
   renderStrokes(canvasRef.current, strokes)
-}, [current?.drawingId, current?.strokes]) // 👈 add current?.strokes to deps
+}, [current?.drawingId, current?.strokes]) 
 
   const handleVote = (reaction: string) => {
     if (voted || isOwnDrawing || !current || showResult) return
@@ -89,7 +88,11 @@ useEffect(() => {
             {(() => {
               const player = connectedPlayers.find(p => p.userId === current.playerId)
               return player?.imageUrl ? (
-                <img src={player.imageUrl} alt={current.playerName} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                <img
+                referrerPolicy="no-referrer"
+                src={player.imageUrl}
+                alt={current.playerName}
+                className="w-6 h-6 rounded-full object-cover shrink-0" />
               ) : (
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -104,7 +107,6 @@ useEffect(() => {
           </h2>
         </div>
 
-        {/* Timer */}
         <div className={`font-mono font-bold text-3xl w-14 h-14 rounded-xl border flex items-center justify-center transition-all ${
           timeWarning
             ? 'text-red-400 border-red-500/30 bg-red-500/10 animate-pulse'
@@ -114,7 +116,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Progress dots */}
       <div className="flex items-center gap-2">
         {Array.from({ length: current.total }).map((_, i) => (
           <div key={i} className={`rounded-full transition-all duration-300 ${
@@ -125,12 +126,10 @@ useEffect(() => {
         ))}
       </div>
 
-      {/* Canvas */}
       <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
         <canvas ref={canvasRef} width={800} height={480} className="w-full block" />
       </div>
 
-      {/* Reactions */}
       {!isOwnDrawing ? (
         <div className="w-full grid grid-cols-5 gap-3">
           {REACTIONS.map(({ key, emoji, label, color }) => {
@@ -170,7 +169,6 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Result banner */}
       {showResult && (
         <div className="w-full py-3 rounded-xl text-center text-sm font-semibold border bg-slate-800/60 border-white/10 text-slate-300">
           {(() => {
