@@ -56,12 +56,15 @@ public class SecurityConfig {
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.decoder(jwtDecoder()))
                 .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(401);
-                    response.setContentType("application/json");
-                    response.getWriter().write(
-                        "{\"error\": \"" + authException.getMessage() + "\"}"
-                    );
-                })
+    System.out.println("AUTH FAILED URL: " + request.getRequestURI());
+    System.out.println("AUTH FAILED METHOD: " + request.getMethod());
+    System.out.println("AUTH FAILED REASON: " + authException.getMessage());
+    String authHeader = request.getHeader("Authorization");
+    System.out.println("AUTH HEADER: " + (authHeader != null ? authHeader.substring(0, Math.min(50, authHeader.length())) : "null"));
+    response.setStatus(401);
+    response.setContentType("application/json");
+    response.getWriter().write("{\"error\": \"" + authException.getMessage() + "\"}");
+})
             );
 
         return http.build();

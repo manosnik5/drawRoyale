@@ -8,7 +8,9 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
        const interceptor = axiosInstance.interceptors.request.use(async (config) => {
+        console.log('REQUEST URL:', config.url)
         if (config.url?.includes('/auth/callback')) {
+            console.log('SKIPPING token for callback')
             return config  
         }
 
