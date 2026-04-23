@@ -23,6 +23,8 @@ createRoot(document.getElementById('root')!).render(
         redirect_uri: window.location.origin + "/auth-callback",
         audience: audience
       }}
+      cacheLocation="localstorage"    
+      useRefreshTokens={true}  
     >
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
